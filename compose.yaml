@@ -1,0 +1,21 @@
+services:
+  rust-server:
+    build:
+      context: .
+      dockerfile: container/Dockerfile
+
+    container_name: rust-server
+
+    ports:
+      - "28015:28015/udp"
+      - "28016:28016/tcp"
+
+    volumes:
+      - type: bind
+        source: ./src
+        target: /srv/rust/oxide/plugins
+
+    stdin_open: true
+    tty: true
+
+    restart: unless-stopped
