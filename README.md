@@ -1,15 +1,20 @@
 # Rust Docker
 
-Local Docker-based development environment for running a Rust Dedicated Server with Oxide/uMod support.
+Local Docker-based development environment for running a Rust Dedicated Server with support for modern Rust modding frameworks.
+
+Currently supported:
+
+- Carbon (default)
+- Oxide/uMod
 
 This repository is intended for local plugin development, testing, and fast iteration without installing the Rust server directly on the host system.
 
 ## Features
 
 - Rust Dedicated Server installed via SteamCMD
-- Oxide/uMod installed during image build
+- Carbon or Oxide/uMod installed during image build
 - Docker Compose based setup
-- Local `src/` folder mounted into the Oxide plugins directory
+- Local `src/` folder mounted into the active plugins directory
 - RCON enabled for local development
 - Runs the server as a non-root user inside the container
 - Minimal setup focused on plugin development
@@ -20,8 +25,10 @@ This repository is intended for local plugin development, testing, and fast iter
 .
 ├── compose.yaml
 ├── init.sh
+├── .env
 ├── container/
 │   ├── Dockerfile
+│   ├── install-carbon.sh
 │   └── install-oxide.sh
 └── src/
 ```
@@ -29,10 +36,11 @@ This repository is intended for local plugin development, testing, and fast iter
 | Path | Purpose |
 |---|---|
 | `compose.yaml` | Defines the Rust server container, exposed ports, and plugin bind mount |
-| `container/Dockerfile` | Builds the Rust Dedicated Server image and installs Oxide |
+| `container/Dockerfile` | Builds the Rust Dedicated Server image and installs the selected framework |
+| `container/install-carbon.sh` | Downloads and installs the latest Carbon release |
 | `container/install-oxide.sh` | Downloads and installs the latest Oxide.Rust release |
 | `init.sh` | Prepares the local `src/` plugin directory permissions |
-| `src/` | Local plugin source folder mounted to `/srv/rust/oxide/plugins` |
+| `src/` | Local plugin source folder mounted into the active plugin directory |
 
 ## Requirements
 
@@ -40,7 +48,7 @@ This repository is intended for local plugin development, testing, and fast iter
 - Docker Compose
 - Linux, macOS, or WSL2 on Windows
 
-On Windows, WSL2 is recommended because Rust server file permissions and bind mounts behave more predictably there. Humanity created three operating systems and somehow still made file permissions feel like ritual magic.
+On Windows, WSL2 is recommended because Rust server file permissions and bind mounts behave more predictably there.
 
 ## Setup
 
@@ -57,13 +65,36 @@ Prepare the local plugin directory:
 ./init.sh
 ```
 
+Configure the framework in `.env`:
+
+```env
+MOD_FRAMEWORK=carbon
+PLUGIN_PATH=/srv/rust/carbon/plugins
+```
+
+Available framework options:
+
+### Carbon (default)
+
+```env
+MOD_FRAMEWORK=carbon
+PLUGIN_PATH=/srv/rust/carbon/plugins
+```
+
+### Oxide/uMod
+
+```env
+MOD_FRAMEWORK=oxide
+PLUGIN_PATH=/srv/rust/oxide/plugins
+```
+
 Build and start the server:
 
 ```bash
 docker compose up --build
 ```
 
-The first build downloads the Rust Dedicated Server through SteamCMD and installs Oxide/uMod.
+The first build downloads the Rust Dedicated Server through SteamCMD and installs the selected framework.
 
 ## Ports
 
@@ -74,20 +105,28 @@ The first build downloads the Rust Dedicated Server through SteamCMD and install
 
 ## Plugin Development
 
-Place your Oxide/uMod plugin files inside the local `src/` directory:
+Place your plugin files inside the local `src/` directory:
 
 ```text
 src/
 └── MyPlugin.cs
 ```
 
-The folder is mounted directly into the container:
+The folder is mounted directly into the active framework plugin directory.
+
+Examples:
+
+```text
+/srv/rust/carbon/plugins
+```
+
+or
 
 ```text
 /srv/rust/oxide/plugins
 ```
 
-Oxide automatically loads plugins from that directory. Tiny dopamine factory for server developers.
+depending on the selected framework.
 
 ## Server Defaults
 
@@ -115,7 +154,7 @@ Default development password:
 super_secure_dev_password
 ```
 
-Do not expose this setup publicly without changing the RCON password and reviewing the server configuration. The internet is basically a distributed stress test for bad defaults.
+Do not expose this setup publicly without changing the RCON password and reviewing the server configuration.
 
 ## Data Persistence
 
@@ -131,7 +170,7 @@ Example:
 volumes:
   - type: bind
     source: ./src
-    target: /srv/rust/oxide/plugins
+    target: ${PLUGIN_PATH:-/srv/rust/carbon/plugins}
   - type: bind
     source: ./data
     target: /srv/rust

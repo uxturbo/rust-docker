@@ -8,6 +8,8 @@ RUN steamcmd \
 
 FROM debian:trixie-slim
 
+ARG MOD_FRAMEWORK=carbon
+
 RUN groupadd -g 1000 rustgroup && \
     useradd -r -u 10001 -g rustgroup --create-home rust
 
@@ -26,15 +28,32 @@ WORKDIR /srv/rust
 
 COPY --from=install-stage /srv/rust /srv/rust
 
-COPY install-oxide.sh /tmp/install-oxide.sh
+COPY container/install-oxide.sh /tmp/install-oxide.sh
+COPY container/install-carbon.sh /tmp/install-carbon.sh
 
-RUN chmod +x /tmp/install-oxide.sh && \
-    /tmp/install-oxide.sh && \
-    rm /tmp/install-oxide.sh
+RUN chmod +x /tmp/install-oxide.sh /tmp/install-carbon.sh && \
+    if [ "$MOD_FRAMEWORK" = "carbon" ]; then \
+        echo "Installing Carbon framework..." && \
+        /tmp/install-carbon.sh; \
+    elif [ "$MOD_FRAMEWORK" = "oxide" ]; then \
+        echo "Installing Oxide/uMod framework..." && \
+        /tmp/install-oxide.sh; \
+    elif [ "$MOD_FRAMEWORK" = "none" ]; then \
+        echo "Skipping mod framework installation."; \
+    else \
+        echo "Unsupported MOD_FRAMEWORK: $MOD_FRAMEWORK" && \
+        echo "Supported values: carbon, oxide, none" && \
+        exit 1; \
+    fi && \
+    rm /tmp/install-oxide.sh /tmp/install-carbon.sh
+
+
+COPY container/start-server.sh /usr/local/bin/start-server.sh
+RUN chmod +x /usr/local/bin/start-server.sh && \
+    if [ -f /srv/rust/carbon.sh ]; then chmod +x /srv/rust/carbon.sh; fi
 
 USER rust
 
 EXPOSE 28015/udp
 EXPOSE 28016/tcp
-
-CMD ["./RustDedicated", "-batchmode", "-nographics", "+server.ip", "0.0.0.0", "+server.port", "28015", "+server.hostname", "C470DEV", "+server.maxplayers", "10", "+server.worldsize", "1000", "+server.gamemode", "vanilla", "+server.seed", "123456", "+server.identity", "devserver", "+rcon.ip", "0.0.0.0", "+rcon.port", "28016", "+rcon.password", "super_secure_dev_password", "+rcon.web", "1", "+app.port", "0"]
+CMD ["start-server.sh", "-batchmode", "-nographics", "+server.ip", "0.0.0.0", "+server.port", "28015", "+server.hostname", "RustDev", "+server.maxplayers", "10", "+server.worldsize", "1000", "+server.gamemode", "vanilla", "+server.seed", "123456", "+server.identity", "devserver", "+rcon.ip", "0.0.0.0", "+rcon.port", "28016", "+rcon.password", "super_secure_dev_password", "+rcon.web", "1", "+app.port", "0"]

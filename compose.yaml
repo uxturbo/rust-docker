@@ -2,6 +2,8 @@ services:
   rust-server:
     build:
       context: .
+      args:
+        MOD_FRAMEWORK: ${MOD_FRAMEWORK:-carbon}
       dockerfile: container/Dockerfile
 
     container_name: rust-server
@@ -13,7 +15,7 @@ services:
     volumes:
       - type: bind
         source: ./src
-        target: /srv/rust/oxide/plugins
+        target: ${PLUGIN_PATH:-/srv/rust/carbon/plugins}
 
     stdin_open: true
     tty: true
